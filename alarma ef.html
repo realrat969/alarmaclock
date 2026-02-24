@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>ALARMA 3099</title>
+    <title>Cyber-System Alert 2026</title>
     <style>
         :root {
             --neon-cyan: #00f3ff;
@@ -50,7 +50,6 @@
 
         button:hover { background: var(--neon-cyan); color: black; box-shadow: 0 0 20px var(--neon-cyan); }
 
-    
         #notification {
             display: none;
             position: fixed;
@@ -112,17 +111,20 @@
 
 <div id="notification">
     <div class="alert-box">
-        <h1>SE ACABO EL TIEMPO</h1>
+        <h1>¡SE ACABÓ EL TIEMPO!</h1>
         <button class="btn-close" onclick="stopAlarm()">CERRAR</button>
     </div>
 </div>
 
 <script>
     let alarmInterval;
+    let alarmBeepInterval;
+    let chronoInterval;
+    let secondsChrono = 0;
     let audioCtx;
     let oscillator;
-    let alarmIntervalBeep;
 
+    // --- FUNCIONES DE AUDIO ---
     function playBeep() {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         oscillator = audioCtx.createOscillator();
@@ -136,11 +138,13 @@
         gainNode.connect(audioCtx.destination);
         oscillator.start();
         
-        alarmIntervalBeep = setInterval(() => {
+        // Uso de setInterval para el parpadeo del sonido
+        alarmBeepInterval = setInterval(() => {
             gainNode.gain.value = gainNode.gain.value === 0 ? 0.2 : 0;
         }, 200);
     }
 
+    // --- LÓGICA ALARMA ---
     function startAlarm() {
         clearInterval(alarmInterval);
         const input = document.getElementById('alarmInput').value;
@@ -156,8 +160,11 @@
 
             if (timeSeconds <= 0) {
                 clearInterval(alarmInterval);
-                document.getElementById('notification').style.display = 'flex';
-                playBeep();
+                // Usamos setTimeout para disparar la notificación un instante después de llegar a cero
+                setTimeout(() => {
+                    document.getElementById('notification').style.display = 'flex';
+                    playBeep();
+                }, 10);
             }
             timeSeconds--;
         }, 1000);
@@ -168,7 +175,7 @@
             oscillator.stop();
             oscillator = null;
         }
-        if (typeof alarmIntervalBeep !== 'undefined') clearInterval(alarmIntervalBeep);
+        clearInterval(alarmBeepInterval);
         document.getElementById('notification').style.display = 'none';
         document.getElementById('alarmDisplay').innerText = "00:00";
     }
@@ -177,32 +184,33 @@
         clearInterval(alarmInterval);
         stopAlarm();
         document.getElementById('alarmInput').value = "";
-        document.getElementById('alarmDisplay').innerText = "00:00";
     }
 
-    let chronoInterval;
-    let seconds = 0;
-
+    // --- LÓGICA CRONÓMETRO ---
     function startChrono() {
         clearInterval(chronoInterval);
         chronoInterval = setInterval(() => {
-            seconds++;
-            let h = Math.floor(seconds / 3600);
-            let m = Math.floor((seconds % 3600) / 60);
-            let s = seconds % 60;
+            secondsChrono++;
+            let h = Math.floor(secondsChrono / 3600);
+            let m = Math.floor((secondsChrono % 3600) / 60);
+            let s = secondsChrono % 60;
             document.getElementById('chronoDisplay').innerText = 
                 `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
         }, 1000);
     }
 
     function pauseChrono() {
+        // Simplemente limpiamos el intervalo, el valor de secondsChrono se mantiene
         clearInterval(chronoInterval);
     }
 
     function stopChrono() {
         clearInterval(chronoInterval);
-        seconds = 0;
-        document.getElementById('chronoDisplay').innerText = "00:00:00";
+        // Usamos setTimeout para asegurar que el reset visual ocurra tras limpiar el proceso
+        setTimeout(() => {
+            secondsChrono = 0;
+            document.getElementById('chronoDisplay').innerText = "00:00:00";
+        }, 0);
     }
 </script>
 
