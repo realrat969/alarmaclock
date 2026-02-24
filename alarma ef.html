@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>ALARMA 3099</title>
+    <style>
+        :root {
+            --neon-cyan: #00f3ff;
+            --neon-pink: #ff0055;
+            --alert-red: #ff0000;
+            --dark-bg: #050505;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--neon-cyan);
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .container {
+            border: 2px solid var(--neon-cyan);
+            padding: 30px;
+            box-shadow: 0 0 20px var(--neon-cyan);
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 5px;
+            text-align: center;
+            z-index: 1;
+        }
+
+        .display { font-size: 3.5rem; margin: 20px 0; text-shadow: 0 0 15px var(--neon-cyan); }
+        
+        input {
+            background: transparent; border: 1px solid var(--neon-pink);
+            color: var(--neon-pink); padding: 10px; width: 80px;
+            font-size: 1.2rem; text-align: center; outline: none;
+        }
+
+        button {
+            background: transparent; border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan); padding: 10px 20px; cursor: pointer;
+            font-weight: bold; margin: 5px; text-transform: uppercase;
+        }
+
+        button:hover { background: var(--neon-cyan); color: black; box-shadow: 0 0 20px var(--neon-cyan); }
+
+    
+        #notification {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            z-index: 999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .alert-box {
+            background: black;
+            border: 5px solid var(--alert-red);
+            padding: 50px;
+            text-align: center;
+            box-shadow: 0 0 50px var(--alert-red);
+            animation: pulse-red 0.5s infinite;
+        }
+
+        .alert-box h1 { color: var(--alert-red); font-size: 3rem; margin-bottom: 30px; }
+
+        .btn-close {
+            background: var(--alert-red);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 0 20px var(--alert-red);
+        }
+
+        @keyframes pulse-red {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>ALARMA 3099</h2>
+    <input type="number" id="alarmInput" placeholder="MINS">
+    <button onclick="startAlarm()">SET</button>
+    <button onclick="resetAlarm()" style="border-color: var(--neon-pink); color: var(--neon-pink);">RESET</button>
+    <div id="alarmDisplay" class="display">00:00</div>
+    
+    <hr style="border: 0.5px solid #333; margin: 30px 0;">
+    
+    <h2>CRONÓMETRO</h2>
+    <div id="chronoDisplay" class="display">00:00:00</div>
+    <button onclick="startChrono()">START</button>
+    <button onclick="pauseChrono()">PAUSE</button>
+    <button onclick="stopChrono()" style="border-color: var(--neon-pink); color: var(--neon-pink);">STOP</button>
+</div>
+
+<div id="notification">
+    <div class="alert-box">
+        <h1>SE ACABO EL TIEMPO</h1>
+        <button class="btn-close" onclick="stopAlarm()">CERRAR</button>
+    </div>
+</div>
+
+<script>
+    let alarmInterval;
+    let audioCtx;
+    let oscillator;
+    let alarmIntervalBeep;
+
+    function playBeep() {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        oscillator = audioCtx.createOscillator();
+        let gainNode = audioCtx.createGain();
+
+        oscillator.type = 'square';
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.start();
+        
+        alarmIntervalBeep = setInterval(() => {
+            gainNode.gain.value = gainNode.gain.value === 0 ? 0.2 : 0;
+        }, 200);
+    }
+
+    function startAlarm() {
+        clearInterval(alarmInterval);
+        const input = document.getElementById('alarmInput').value;
+        if (!input) return;
+
+        let timeSeconds = input * 60;
+        
+        alarmInterval = setInterval(() => {
+            let mins = Math.floor(timeSeconds / 60);
+            let secs = timeSeconds % 60;
+            document.getElementById('alarmDisplay').innerText = 
+                `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+            if (timeSeconds <= 0) {
+                clearInterval(alarmInterval);
+                document.getElementById('notification').style.display = 'flex';
+                playBeep();
+            }
+            timeSeconds--;
+        }, 1000);
+    }
+
+    function stopAlarm() {
+        if (oscillator) {
+            oscillator.stop();
+            oscillator = null;
+        }
+        if (typeof alarmIntervalBeep !== 'undefined') clearInterval(alarmIntervalBeep);
+        document.getElementById('notification').style.display = 'none';
+        document.getElementById('alarmDisplay').innerText = "00:00";
+    }
+
+    function resetAlarm() {
+        clearInterval(alarmInterval);
+        stopAlarm();
+        document.getElementById('alarmInput').value = "";
+        document.getElementById('alarmDisplay').innerText = "00:00";
+    }
+
+    let chronoInterval;
+    let seconds = 0;
+
+    function startChrono() {
+        clearInterval(chronoInterval);
+        chronoInterval = setInterval(() => {
+            seconds++;
+            let h = Math.floor(seconds / 3600);
+            let m = Math.floor((seconds % 3600) / 60);
+            let s = seconds % 60;
+            document.getElementById('chronoDisplay').innerText = 
+                `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }, 1000);
+    }
+
+    function pauseChrono() {
+        clearInterval(chronoInterval);
+    }
+
+    function stopChrono() {
+        clearInterval(chronoInterval);
+        seconds = 0;
+        document.getElementById('chronoDisplay').innerText = "00:00:00";
+    }
+</script>
+
+</body>
+</html>
